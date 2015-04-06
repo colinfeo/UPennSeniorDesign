@@ -6,15 +6,17 @@ Serial::Serial(char *portName)
     this->connected = false;
 
     //Try to connect to the given port throuh CreateFile
-    this->hSerial = CreateFile(portName,
+    
+	this->hSerial = CreateFile(portName,
             GENERIC_READ | GENERIC_WRITE,
             0,
             NULL,
             OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
+			FILE_ATTRIBUTE_NORMAL,
             NULL);
-
-    //Check if the connection was successfull
+    
+	//FILE_ATTRIBUTE_NORMAL
+	//Check if the connection was successfull
     if(this->hSerial==INVALID_HANDLE_VALUE)
     {
         //If not success full display an Error
@@ -43,11 +45,10 @@ Serial::Serial(char *portName)
         else
         {
             //Define serial connection parameters for the arduino board
-            dcbSerialParams.BaudRate=CBR_9600;
+			dcbSerialParams.BaudRate=CBR_115200;
             dcbSerialParams.ByteSize=8;
             dcbSerialParams.StopBits=ONESTOPBIT;
             dcbSerialParams.Parity=NOPARITY;
-
              //Set the parameters and check for their proper application
              if(!SetCommState(hSerial, &dcbSerialParams))
              {
@@ -129,6 +130,7 @@ bool Serial::WriteData(char *buffer, unsigned int nbChar)
         return false;
     }
     else
+		//FlushFileBuffers(this->hSerial);
         return true;
 }
 
