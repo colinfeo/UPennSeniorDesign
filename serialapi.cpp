@@ -55,11 +55,11 @@ vector<float> getMotorForces(float x, float y, float moment);
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	testCalculateForce();
+	//testCalculateForce();
 	//testCalculateCoordinates();
-	while(true) {
-		Sleep(5);
-	}
+	//while(true) {
+	//	Sleep(5);
+	//}
 
 	//read in L1, L2, L3, L4 position from teensy
 	float L0 = 0; //bottom right cord length
@@ -67,14 +67,21 @@ int _tmain(int argc, _TCHAR* argv[])
 	float L2 = 0; //upper left cord length
 	float L3 = 0; //bottom left cord length
 	//initialize serial connection
-	Serial* mySerial = new Serial("COM5");
+	Serial* mySerial = new Serial("COM6");
 	char serialBuffTest[16];
+
 
 
 	//initialize tcp server connection and open socket: for Unity
 	zmq::context_t context (1);
-	zmq::socket_t socket (context, ZMQ_PAIR);
+	zmq::socket_t socket (context, ZMQ_SUB);
 	socket.bind("tcp://*:11000");
+	int hwm = 2;
+	int rcvto = 0;
+	socket.setsockopt(ZMQ_SUBSCRIBE,"",strlen(""));
+	socket.setsockopt(ZMQ_RCVHWM,&hwm,sizeof(hwm));
+	socket.setsockopt(ZMQ_RCVTIMEO,&rcvto,sizeof(rcvto));
+	//socket.setsockopt(ZMQ_RCVHWM,1);
 
 	//declare send and recieve timer values
 	float sendTime = (float)timeGetTime();
@@ -89,8 +96,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		/////////////////////////
 		//RECIEVING FROM TEENSY//
 		/////////////////////////
-		if( (float)timeGetTime() > recieveTime ) {
-			
+		if( (float)timeGetTime() > recieveTime ) {			
 			//read in over serial
 			mySerial->ReadData(serialBuffTest,16);
 			//cast to array of ints
@@ -99,18 +105,20 @@ int _tmain(int argc, _TCHAR* argv[])
 			
 			//lengths of wires, in centimeters
 			float conversionRate = (2.0f * 3.14159f) / 512.0f;
-			L0 = wireLengths[0]*conversionRate; // bottom right
-			L1 = wireLengths[1]*conversionRate; // top right
-			L2 = wireLengths[2]*conversionRate; // top left
-			L3 = wireLengths[3]*conversionRate; // bottom left
+			L0 = (float)wireLengths[0]*conversionRate; // bottom right
+			L1 = (float)wireLengths[1]*conversionRate; // top right
+			L2 = (float)wireLengths[2]*conversionRate; // top left
+			L3 = (float)wireLengths[3]*conversionRate; // bottom left
 			
 			//calculate mouse position based on lengths
 			calculateCoordinates(L0,L1,L2,L3);	
-
+			//printf("l0: %f || l1: %f || l2: %f || l3: %f \n", L0,L1,L2,L3);
+			//printf("X: %f, Y: %f \n", X,Y);
 			//transform to generalized screen coordinates (between 0 and 1.0f)
 			float generalizedX = X/A;
 			float generalizedY = Y/B;
 
+			
 			//change the coordinate frame from our frame (origin bottom left) to windows frame (origin upper left)
 
 			//set the windows mouse position
@@ -124,18 +132,29 @@ int _tmain(int argc, _TCHAR* argv[])
 		//SENDING TO TEENSY//
 		/////////////////////
 		if( (float)timeGetTime() > sendTime ) {
-			
+
 			//request data from socket: for Unity, returned in array of size 2: unityForces
-			//zmq::message_t request = zmq::message_t();
-			//socket.recv (&request);
-			//float* unityForces = static_cast<float*>(request.data());
-			//printf("%f, %f \n",unityForces[0],unityForces[1]);
-			//calculate jacobian	
+			zmq::message_t request = zmq::message_t();
+			
+			while(socket.recv(&request))
+			{
+				//clearing buffer
+			}
+			float* unityForces = static_cast<float*>(request.data());
+			float rootSquareValue = sqrt(pow(unityForces[0],2) + pow(unityForces[1],2));
+			if(rootSquareValue > 5)
+			{
+				unityForces[0] = (unityForces[0]/rootSquareValue)*5.0f;
+				unityForces[1] = (unityForces[1]/rootSquareValue)*5.0f;
+			}
+			printf("%f, %f \n",unityForces[0],unityForces[1]);
 			Eigen::Vector3f desiredControl;
 			desiredControl[0] = 0.0f;//unityForces[1]; //flip the inputs from unity because of a change of frame of reference
 			desiredControl[1] = 0.0f;//unityForces[0]; 
 			desiredControl[2] = 0.0f;
 
+			//vector<float> forces(4);// = vector<float>(0.0f,0.0f,0.0f);// = (0.0f,0.0f,0.0f);
+		
 			vector<float> forces = getMotorForces(desiredControl[0],desiredControl[1],desiredControl[2]);
 
 			motorForcesToSerial[0] = (int)((forces[0] / maxForce) * -255);
@@ -143,11 +162,16 @@ int _tmain(int argc, _TCHAR* argv[])
 			motorForcesToSerial[2] = (int)((forces[2] / maxForce) * -255);
 			motorForcesToSerial[3] = (int)((forces[3] / maxForce) * -255);
 			
+			//motorForcesToSerial[0] = 80; //(int)((forces[0] / maxForce) * -255);
+			//motorForcesToSerial[1] = 80; //(int)((forces[1] / maxForce) * -255);
+			//motorForcesToSerial[2] = 80; //(int)((forces[2] / maxForce) * -255);
+			//motorForcesToSerial[3] = 80; //
+
 			//send data to teensy
 			mySerial->WriteData((char*)motorForcesToSerial, 16);
-			
 			//put in delay
-			sendTime = (float)timeGetTime() + 20.0f;
+			sendTime = (float)timeGetTime() + 20.0f;	
+		
 		}
 
 		//clear the usb buffer really quickly
@@ -289,7 +313,7 @@ vector<float> getMotorForces(float desired_f_x, float desired_f_y, float desired
 	
 	//copy all values into return array
     for(int j = 0; j < Ncol; j++) {
-		printf("%s: %f\n", get_col_name(lp, j + 1), row[j]);
+		//printf("%s: %f\n", get_col_name(lp, j + 1), row[j]);
 		retVec[j] = (float)row[j];
 	}
 	
