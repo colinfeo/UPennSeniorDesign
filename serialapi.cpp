@@ -27,7 +27,7 @@ float B = 45.24f; //x distance from bottom pulley to top pulley
 int screenWidth = 1920;
 int screenHeight = 1080;
 
-//x,y postiions of top and bottom end effector points
+//x,y postiions of top aqnd bottom end effector points
 float botX;
 float botY;
 float topX;
@@ -41,7 +41,7 @@ float X;
 float Y;
 
 //minimum force on motor
-float minForce = 3.0f;
+float minForce = 2.36f;
 float maxForce = 10.0f;
 
 
@@ -71,7 +71,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	char serialBuffTest[16];
 
 
-
+	//int wireLengths[5] = {0};
 	//initialize tcp server connection and open socket: for Unity
 	zmq::context_t context (1);
 	zmq::socket_t socket (context, ZMQ_SUB);
@@ -87,7 +87,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	float sendTime = (float)timeGetTime();
 	float recieveTime = (float)timeGetTime();
 	int* motorForcesToSerial = new int[4];
-	
+	int oldClick = 0;
 	/////////////////////
 	//MAIN POLLING LOOP//
 	/////////////////////
@@ -97,12 +97,35 @@ int _tmain(int argc, _TCHAR* argv[])
 		//RECIEVING FROM TEENSY//
 		/////////////////////////
 		if( (float)timeGetTime() > recieveTime ) {			
+			int click = 0;
+			//int oldClick = 0;
+			//update next time we should run this loop
+			recieveTime = (float)timeGetTime() + 10.0f;
 			//read in over serial
-			mySerial->ReadData(serialBuffTest,16);
+			int f = mySerial->ReadData(serialBuffTest,16);
+			//printf("%i \n",f);
 			//cast to array of ints
 			int* wireLengths = (int*)(serialBuffTest);
 			//printf("%i, %i, %i, %i \n",wireLengths[0],wireLengths[1],wireLengths[2],wireLengths[3]);
 			
+
+			//left click
+			if(wireLengths[0] < 0 ){
+				click = 1;
+				wireLengths[0] *= -1;
+			}
+			//right click
+			if(wireLengths[1] < 0 ){
+				click = 2;
+				wireLengths[1] *= -1;
+			}
+			//both click
+			if(wireLengths[2] < 0 ){
+				click = 3;
+				wireLengths[2] *= -1;
+			}
+
+			//printf("%i \n", click);
 			//lengths of wires, in centimeters
 			float conversionRate = (2.0f * 3.14159f) / 512.0f;
 			L0 = (float)wireLengths[0]*conversionRate; // bottom right
@@ -118,41 +141,107 @@ int _tmain(int argc, _TCHAR* argv[])
 			float generalizedX = X/A;
 			float generalizedY = Y/B;
 
+			//transformations to adjust for working area of device
+			generalizedX = (generalizedX - 0.15727) / (0.65);
+			generalizedY = (generalizedY - 0.22458) / (0.5);
+
 			
 			//change the coordinate frame from our frame (origin bottom left) to windows frame (origin upper left)
 
 			//set the windows mouse position
-			//SetCursorPos( (int) generalizedX * screenWidth , (int) (1.0f-generalizedY) * screenHeight );
-			
-			//update next time we should run this loop
-			recieveTime = (float)timeGetTime() + 10.0f;
+			SetCursorPos( (int) (generalizedX * screenWidth) , (int) ((1.0f-generalizedY) * screenHeight) );
+ 
+			//NO CLICK
+			// process mouse clicks into no click state		
+			if(click == 0 && oldClick == 1) {
+				mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);	
+			}
+			if(click == 0 && oldClick == 2) {
+				mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);				
+			}
+			if(click == 0 && oldClick == 3) {
+				mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+				mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);				
+			}
+
+			//LEFT CLICK//
+			// process mouse clicks into left click state 
+			if(click == 1 && oldClick == 0) {
+				mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+				//mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+			}
+			// process mouse clicks into left click state 
+			if(click == 1 && oldClick == 2) {
+				mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+				mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+			}
+			// process mouse clicks into left click state 
+			if(click == 1 && oldClick == 3) {
+				mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+			}
+
+			//RIGHT CLICK//
+			// process mouse clicks into left click state 
+			if(click == 2 && oldClick == 0) {
+				//mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+				mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+			}
+			// process mouse clicks into left click state 
+			if(click == 2 && oldClick == 1) {
+				mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+				mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+			}
+			// process mouse clicks into left click state 
+			if(click == 2 && oldClick == 3) {
+				mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+			}
+
+			//BOTH CLICK//
+			// process mouse clicks into left click state 
+			if(click == 3 && oldClick == 0) {
+				mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+				mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+			}
+			// process mouse clicks into left click state 
+			if(click == 3 && oldClick == 1) {
+				//mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+				mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+			}
+			// process mouse clicks into left click state 
+			if(click == 3 && oldClick == 2) {
+				mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+			}
+			oldClick = click;
 		}
 
 		/////////////////////
 		//SENDING TO TEENSY//
 		/////////////////////
 		if( (float)timeGetTime() > sendTime ) {
-
+			//put in delay
+			sendTime = (float)timeGetTime() + 10.0f;
 			//request data from socket: for Unity, returned in array of size 2: unityForces
 			zmq::message_t request = zmq::message_t();
 			
 			while(socket.recv(&request))
 			{
-				//clearing buffer
 			}
+
 			float* unityForces = static_cast<float*>(request.data());
 			float rootSquareValue = sqrt(pow(unityForces[0],2) + pow(unityForces[1],2));
-			if(rootSquareValue > 5)
+			if(rootSquareValue > 5.0f)
 			{
-				unityForces[0] = (unityForces[0]/rootSquareValue)*5.0f;
-				unityForces[1] = (unityForces[1]/rootSquareValue)*5.0f;
+				unityForces[0] = (unityForces[0]/rootSquareValue) * 5.0f;
+				unityForces[1] = (unityForces[1]/rootSquareValue) * 5.0f;
 			}
-			printf("%f, %f \n",unityForces[0],unityForces[1]);
+			//printf("%f, %f \n",unityForces[0],unityForces[1]);
 			Eigen::Vector3f desiredControl;
-			desiredControl[0] = 0.0f;//unityForces[1]; //flip the inputs from unity because of a change of frame of reference
-			desiredControl[1] = 0.0f;//unityForces[0]; 
+			//desiredControl[0] = 0.0f;
+			//desiredControl[1] = 0.0f; 
+			//desiredControl[2] = 0.0f;
+			desiredControl[0] = unityForces[0];
+			desiredControl[1] = unityForces[1];
 			desiredControl[2] = 0.0f;
-
 			//vector<float> forces(4);// = vector<float>(0.0f,0.0f,0.0f);// = (0.0f,0.0f,0.0f);
 		
 			vector<float> forces = getMotorForces(desiredControl[0],desiredControl[1],desiredControl[2]);
@@ -161,17 +250,19 @@ int _tmain(int argc, _TCHAR* argv[])
 			motorForcesToSerial[1] = (int)((forces[1] / maxForce) * -255);
 			motorForcesToSerial[2] = (int)((forces[2] / maxForce) * -255);
 			motorForcesToSerial[3] = (int)((forces[3] / maxForce) * -255);
+			//printf("M1: %f \n M2:%f \n M3:%f \n M4:%f \n",forces[0],forces[1],forces[2],forces[3]);
+			//printf("%i, %i, %i, %i \n",(int)motorForcesToSerial[0],(int)motorForcesToSerial[1],(int)motorForcesToSerial[2],(int)motorForcesToSerial[3]);
 			
-			//motorForcesToSerial[0] = 80; //(int)((forces[0] / maxForce) * -255);
-			//motorForcesToSerial[1] = 80; //(int)((forces[1] / maxForce) * -255);
-			//motorForcesToSerial[2] = 80; //(int)((forces[2] / maxForce) * -255);
-			//motorForcesToSerial[3] = 80; //
+			//motorForcesToSerial[0] = 80; 
+			//motorForcesToSerial[1] = 80; 
+			//motorForcesToSerial[2] = 80; 
+			//motorForcesToSerial[3] = 80; 
 
 			//send data to teensy
-			mySerial->WriteData((char*)motorForcesToSerial, 16);
-			//put in delay
-			sendTime = (float)timeGetTime() + 20.0f;	
-		
+			mySerial->WriteData((char*)motorForcesToSerial, 16);	
+			//printf("not skip \n");
+		} else {
+			//printf("skip \n");
 		}
 
 		//clear the usb buffer really quickly
@@ -289,7 +380,7 @@ vector<float> getMotorForces(float desired_f_x, float desired_f_y, float desired
 	row[1] = m1;
 	row[2] = m2;
 	row[3] = m3;	
-	add_constraintex(lp,4,row,colno,EQ,	desired_moment);
+	//add_constraintex(lp,4,row,colno,EQ,	desired_moment);
 
 	//turn off add_rowmode once model is completed
 	set_add_rowmode(lp, FALSE);
