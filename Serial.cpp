@@ -1,3 +1,17 @@
+/*
+* Serial.cpp - Driver for communication with µ-controller - version 4
+* Created by: Colin Feo
+*         on: 03/10/15
+* All code available at https://github.com/colinfeo/UPennSeniorDesign
+*  - Last backed up 05/10/15
+* Revisions:
+*  - see github repo for full list of commits
+*  - Revised most recently by: Colin Feo
+*  - Revised most recently on: 04/15/15
+*  - Description:
+*     Added connection checks to see whether microcontroller is connected.
+*/
+
 #include "SerialClass.h"
 
 Serial::Serial(char *portName)

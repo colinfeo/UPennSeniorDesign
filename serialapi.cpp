@@ -1,4 +1,19 @@
-// serialapi.cpp : Defines the entry point for the console application.
+/*
+* serialapi.cpp - Defines the entry point for the console application - version 6
+* 				  Computes x,y location of cursor, forces for each motor, given a net x-y force
+* Created by: Colin Feo
+*         on: 03/11/15
+* All code available at https://github.com/colinfeo/UPennSeniorDesign
+*  - Last backed up 05/10/15
+* Revisions:
+*  - see github repo for full list of commits
+*  - Revised most recently by: Colin Feo
+*  - Revised most recently on: 04/18/15
+*  - Description:
+*     Added decoding of button clicks which are embedded (as negative signs) in the encoder lengths.
+*/
+
+
 //
 
 #include <zmq.hpp>
