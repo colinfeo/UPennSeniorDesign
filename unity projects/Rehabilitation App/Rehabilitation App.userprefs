@@ -1,0 +1,13 @@
+﻿<Properties>
+  <MonoDevelop.Ide.Workspace />
+  <MonoDevelop.Ide.Workbench ActiveDocument="..\Solid Object Prototype\Assets\driverPipe.cs">
+    <Files>
+      <File FileName="..\Solid Object Prototype\Assets\driverPipe.cs" Line="39" Column="6" />
+      <File FileName="..\Solid Object Prototype\Assets\mainScript.cs" Line="39" Column="5" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>
